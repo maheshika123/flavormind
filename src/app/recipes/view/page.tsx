@@ -2,7 +2,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, Suspense } from 'react'; // Added Suspense
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardFooter, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -30,7 +30,8 @@ const availableLanguages = [
   // Add more languages as needed
 ];
 
-export default function RecipeViewPage() {
+// Moved original RecipeViewPage content to RecipeViewClientContent
+function RecipeViewClientContent() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   
@@ -77,7 +78,7 @@ export default function RecipeViewPage() {
   }, [originalRecipe, savedRecipes, userInputIngredients]);
 
   const handleShare = async () => {
-    const url = window.location.href; // Always shares the URL that loads the original recipe
+    const url = window.location.href;
     try {
       await navigator.clipboard.writeText(url);
       toast({
@@ -109,8 +110,8 @@ export default function RecipeViewPage() {
   };
 
   const handleTranslate = async () => {
-    if (!originalRecipe || !targetLanguage || targetLanguage === "English") { // Assuming English is the original
-      setTranslatedContent(null); // Clear translation if target is English or no recipe
+    if (!originalRecipe || !targetLanguage || targetLanguage === "English") {
+      setTranslatedContent(null); 
       setTranslationError(null);
       if (targetLanguage === "English") {
         toast({ title: "Showing Original", description: "Displaying the recipe in its original language." });
@@ -146,12 +147,12 @@ export default function RecipeViewPage() {
   };
   
   const recipeToDisplay = useMemo(() => {
-    if (translatedContent && targetLanguage !== "English") { // Assuming English is original
+    if (translatedContent && targetLanguage !== "English") {
       return {
-        ...originalRecipe, // Base properties like times, servingSize, cuisine, difficulty
+        ...originalRecipe, 
         title: translatedContent.translatedTitle,
         description: translatedContent.translatedDescription,
-        ingredients: translatedContent.translatedIngredients, // These now have translated names
+        ingredients: translatedContent.translatedIngredients,
         instructions: translatedContent.translatedInstructions,
         tags: translatedContent.translatedTags,
       };
@@ -159,19 +160,8 @@ export default function RecipeViewPage() {
     return originalRecipe;
   }, [originalRecipe, translatedContent, targetLanguage]);
 
-
   if (isLoadingRecipe) {
-    return (
-      <div className="space-y-6 max-w-3xl mx-auto py-8">
-        <Skeleton className="h-12 w-3/4" />
-        <Skeleton className="h-8 w-1/2" />
-        <Skeleton className="h-40 w-full" />
-        <div className="flex justify-end gap-2">
-            <Skeleton className="h-10 w-28" />
-            <Skeleton className="h-10 w-28" />
-        </div>
-      </div>
-    );
+    return <RecipeViewLoadingSkeleton />; // Use the defined skeleton component
   }
 
   if (!recipeToDisplay || !recipeToDisplay.title) {
@@ -213,7 +203,6 @@ export default function RecipeViewPage() {
             </Button>
           </div>
             {translationError && <p className="text-sm text-destructive">{translationError}</p>}
-
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
             {recipeToDisplay.prepTime && <div className="flex items-center"><Clock className="mr-2 h-4 w-4 text-primary" /> Prep: {recipeToDisplay.prepTime}</div>}
@@ -263,7 +252,7 @@ export default function RecipeViewPage() {
               <ChefHat className="mr-2 h-5 w-5" /> {isRecipeSaved ? 'Saved to My Recipes' : 'Save to My Recipes'}
             </Button>
            )}
-           {isSavedRecipe(originalRecipe!) && ( // If it's already a saved recipe, show a disabled "Saved" button
+           {isSavedRecipe(originalRecipe!) && ( 
              <Button disabled className="bg-accent/70 text-accent-foreground">
               <ChefHat className="mr-2 h-5 w-5" /> Saved
             </Button>
@@ -275,5 +264,34 @@ export default function RecipeViewPage() {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+// Skeleton component for Suspense fallback
+function RecipeViewLoadingSkeleton() {
+  return (
+    <div className="space-y-6 max-w-3xl mx-auto py-8">
+      <Skeleton className="h-12 w-3/4" />
+      <Skeleton className="h-8 w-1/2" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end border-b pb-4 mb-4">
+        <Skeleton className="h-10 w-full sm:w-48" />
+        <Skeleton className="h-10 w-full sm:w-36" />
+      </div>
+      <Skeleton className="h-40 w-full" />
+      <Skeleton className="h-60 w-full" />
+      <div className="flex justify-end gap-2 pt-6 border-t mt-6">
+          <Skeleton className="h-10 w-36" />
+          <Skeleton className="h-10 w-32" />
+      </div>
+    </div>
+  );
+}
+
+// New default export wrapping the client content with Suspense
+export default function RecipeViewPage() {
+  return (
+    <Suspense fallback={<RecipeViewLoadingSkeleton />}>
+      <RecipeViewClientContent />
+    </Suspense>
   );
 }
